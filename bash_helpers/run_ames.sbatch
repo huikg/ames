@@ -18,7 +18,6 @@ micromamba activate ames
 ames --iseq1 'protein:randoms:65:evolv' --seq1_rate 1 \
         --seq1_len_constr 160 \
         --ligand GTP,MG \
-        -pm1 npm \
         -ps 100 \
         -ng 1000 \
         -b0 0.8 \

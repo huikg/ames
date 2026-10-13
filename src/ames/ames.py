@@ -202,17 +202,16 @@ def fold_evolution_simulator() -> None:
             if new_gen.empty: #nothing to select from, remutate the same init_gen
                 continue
 
-        # calculate the homogeneity of the generation,
-        # whole generation is needed to calculate the homogeneity, therefore it is not calculated in extract_results()
-        new_gen['homogen'] = calculate_homogeneity(new_gen)
-
         seconds_per_generation = (datetime.now() - now).total_seconds()
-        if gen_i % 10 == 0:
-            print(f"""
-#{seconds_per_generation:.1f}s per generation
-#{86400 / seconds_per_generation:.0f} generations per day
-#{86400 / seconds_per_generation * args.pop_size:.0f} mutations per day""")
-        
+        if gen_i % args.checkpoint_interval == 0:
+            ckpinfo = (f"""
+# writing checkpoint to {checkpoint_path}
+# {seconds_per_generation:.1f}s/generation
+# {86400 / seconds_per_generation:.0f} generations/day
+# {86400 / seconds_per_generation * args.pop_size:.0f} mutations/day
+#""")
+            print(ckpinfo)
+
         # print each new generation in terminal 
         print_genlog(new_gen, args)  
 
@@ -221,14 +220,21 @@ def fold_evolution_simulator() -> None:
         #select the next generation 
         init_gen = Evolver.select(new_gen, init_gen, args.pop_size, args.selection_mode, args.norepeat, args.beta)
         init_gen.gndx = gen_i #assign a new gen index
+
+        # calculate the homogeneity of the selected generation, whole generation is needed to calculate the homogeneity
+        init_gen['homogen'] = calculate_homogeneity(init_gen)
+
         init_gen.to_csv(logpath, mode='a', index=False, header=False, sep='\t')
 
         if gen_i % args.checkpoint_interval == 0:
             save_checkpoint(init_gen, args)
-    
+            with open(checkpoint_path, 'a') as f:
+                f.write(ckpinfo)
     #save final generation
     save_checkpoint(init_gen, args)
- 
+    with open(checkpoint_path, 'a') as f:
+        f.write(ckpinfo)
+
 #==================================== EVOLVER =====================================#
 #==================================================================================#
 
@@ -456,8 +462,10 @@ def extract_results(gen_i: int,
                               ligand_contact_density,
                               penalty
                               ) + (0.5 * rfam_score)
-
+ 
+        ############################################################################
         #>>>>>>>>>>>>>>>>>>>>>>>>>> TEMPLATE SCORING TEST >>>>>>>>>>>>>>>>>>>>>>>>>> 
+        ############################################################################
         if args.structure_template1 and args.sequence_template:
             try:
                 tmscore = tmalign(pdb_txt, args.structure_template1).tmscore
@@ -467,17 +475,23 @@ def extract_results(gen_i: int,
                 print(args.structure_template1)
             sequence_identity = seqid(seq_data["seq1"]["sequence"], args.sequence_template)
 
-            tmscore = 0.35 if tmscore <= 0.35 else tmscore 
-            # sequence_identity = sequence_identity if sequence_identity >= 0.5 else 0.0
+            # tmscore = 0.35 if tmscore <= 0.35 else tmscore 
+            # sequence_identity = sequence_identity if sequence_identity >= 0.45 else sequence_identity/2
             # ptm = 0 if ptm <= 0.35 else ptm
-            score = 0.5*plddt + ptm + 2*sequence_identity + (1 - tmscore)
+
+            score = 0.5*plddt + ptm \
+                + 2*(sequence_identity if sequence_identity >= 0.45 else sequence_identity/2) \
+                + (1 - (0.35 if tmscore <= 0.35 else tmscore ))
+
+            score = round(score, 3)
 
         else: 
             tmscore = 0.0
             sequence_identity = 0.0
-        
+         
+        ############################################################################
         #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<<
-
+        ############################################################################
 
         row_data = {
             'gndx': gen_i,
@@ -561,19 +575,19 @@ else:
 
 
 if args.engine == "esmfold2":
-    from esmfold2_runner import esmfold2_runner as structure_predictor
+    from engines.esmfold2_runner import esmfold2_runner as structure_predictor
 
 elif args.engine == "af3":
-    from alphafold3_runner import af3_runner as structure_predictor
+    from engines.alphafold3_runner import af3_runner as structure_predictor
 
 elif args.engine == "of3":
-    from openfold3_runner import of3_runner as structure_predictor
+    from engines.openfold3_runner import of3_runner as structure_predictor
 
 elif args.engine == "esmfold":
-    from esmfold_runner import esmfold_runner as structure_predictor
+    from engines.esmfold_runner import esmfold_runner as structure_predictor
 
 elif args.engine == "simulacrum":
-    from simulacra import fold_evolution_simulacrum
+    from engines.simulacra import fold_evolution_simulacrum
 
 else:
     raise ValueError("Unknown engine, available options are: af3, of3, esmfold, simulacrum")

@@ -46,8 +46,9 @@ _src_dir = str(Path(__file__).resolve().parent)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-from seqtools import Seqstat
+from seqtools import fasta2dict
 import pdb_contacts as pc
+from pdbutils import cif2pdb
 
 
 FASTA_EXTS = (".fa", ".fas", ".fasta")
@@ -107,7 +108,7 @@ def normalize_chains(raw_chains: list, query_name: str) -> list:
 
 def fasta_to_query(path: Path) -> dict:
     """Convert a FASTA file into a chain-list query (a complex if multi-record)."""
-    records = Seqstat.read_fasta_to_dict(str(path))
+    records = fasta2dict(str(path))
     if not records:
         raise ValueError(f"no sequences found in {path}")
 
@@ -178,9 +179,8 @@ def load_predictor(engine: str, num_diffusion: int):
     a future version.
     """
     if engine == "esmfold2":
-        from esmfold2_runner import (model, inp_type,
+        from engines.esmfold2_runner import (model, inp_type,
                                       ESMFold2InputBuilder, StructurePredictionInput)
-        from pdbutils import cif2pdb
 
         def predict(chains, name):
             sequences = []
@@ -207,8 +207,7 @@ def load_predictor(engine: str, num_diffusion: int):
 
     if engine == "af3":
         import numpy as np
-        from alphafold3_runner import create_fold_input, run_inference, model_runner
-        from pdbutils import cif2pdb
+        from engines.alphafold3_runner import create_fold_input, run_inference, model_runner
 
         def predict(chains, name):
             fold_input = create_fold_input(seq_list=chains, name=name)
@@ -232,7 +231,7 @@ def load_predictor(engine: str, num_diffusion: int):
         return predict
 
     if engine == "of3":
-        from openfold3_runner import of3_runner
+        from engines.openfold3_runner import of3_runner
 
         def predict(chains, name):
             structures, plddts, ptms, iptms = of3_runner(chains)

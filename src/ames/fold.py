@@ -40,6 +40,7 @@ import json
 import string
 import argparse
 from pathlib import Path
+from contextlib import redirect_stdout
 
 # Ensure src/ is on sys.path so sibling AMES modules are importable from anywhere
 _src_dir = str(Path(__file__).resolve().parent)
@@ -210,8 +211,12 @@ def load_predictor(engine: str, num_diffusion: int):
         from engines.alphafold3_runner import create_fold_input, run_inference, model_runner
 
         def predict(chains, name):
-            fold_input = create_fold_input(seq_list=chains, name=name)
-            results_for_seeds = run_inference(fold_input, model_runner)
+            
+            with open(os.devnull, 'w') as f:
+                with redirect_stdout(f):
+
+                    fold_input = create_fold_input(seq_list=chains, name=name)
+                    results_for_seeds = run_inference(fold_input, model_runner)
 
             best, best_score = None, None
             for results_for_seed in results_for_seeds:

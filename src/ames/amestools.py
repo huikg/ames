@@ -21,7 +21,7 @@ from pdbutils import parsepdb
 from seqtools import Seqstat, fasta2dict
 from _version import get_version
 
-from canya_modeling import (get_canya, get_embedded_seqs, get_predictions)
+from canya import Canya
 
 
 # Resolve repo root from this file's location so paths work from any directory
@@ -467,21 +467,10 @@ def print_genlog(genlog:pd.DataFrame, args) -> None:
 
 @lru_cache(maxsize=1)
 def _canya_model():
-    return get_canya("data/models/model_weights1.h5")
+    return Canya(weights=DATA_DIR / "models" / "model_weights1.npz")
 
 #test
 def agg_propensity(sequence: str) -> float:
     "calculate aggregration propensity a sequence using CANYA"
-
-    windowsize=20
-
-    if len(sequence) > windowsize:
-        windows = [sequence[i:(i+windowsize)] for i in range(len(sequence)-windowsize+1)]
-    else:
-        windows = [sequence]
-
-    embedded = get_embedded_seqs(windows)
-    predictions = get_predictions(model = _canya_model(), embeddedseqs = embedded)
-
-    return float(np.median(predictions))
+    return _canya_model().score([sequence])[0]
 

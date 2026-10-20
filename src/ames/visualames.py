@@ -102,7 +102,7 @@ def extract_lineage(log) -> pd.DataFrame:
     lineage_cols = ["gndx", "lndx", "id", "mutation", "beta", "evolrate",
                     "plddt", "ptm", "iplddt", "iptm", "cd", "lcd",
                     "n_atoms", "n_clashes", "clashscore", "rfam_score", "rfam_hit", "score", 
-                    "seqid", "tmscore", "seq1", "seq1_ss", "seq1_len", "seq1_stat"]
+                    "seqid", "tmscore", "seq1", "seq1_ss", "seq1_len", "seq1_stat", "agg_propensity"]
     if simparam["seq2"]:
         lineage_cols += ["seq2", "seq2_ss", "seq2_len", "seq2_stat"]
     lineage_cols += ["structure"]
@@ -163,6 +163,7 @@ labels = {
     "clashscore": "Clashscore",
     "rfam_score": "RFAM score",
     "rfam_hit": "RFAM",
+    "agg_propensity": "Aggregation propensity",
         }
 
 ylim = {
@@ -189,6 +190,7 @@ ylim = {
     "clashscore": [0,None],        
     "rfam_score": [0,1],        
     "rfam_hit": [0,None],          
+    "agg_propensity": [0,None],          
         }
 
 
@@ -205,7 +207,8 @@ def make_plots(log, bestlog, lineage):
                        'n_atoms', 'n_clashes', 'clashscore', 
                        'seqid', 'tmscore',
                        'seq1_len', 'seq1_stat',
-                       'seq2_len', 'seq2_stat']:
+                       'seq2_len', 'seq2_stat',
+                       'agg_propensity']:
                 
                 fig, ax1 = plt.subplots(figsize=(7, 3))
                 ax1.plot(log[colname],'.', markersize=ms,    color='silver', label='all mutations')
@@ -382,6 +385,7 @@ log["seq1"] = log["sequence_data"].apply(lambda x: x["seq1"]["sequence"])
 log["seq1_ss"] = log["sequence_data"].apply(lambda x: x["seq1"]["ss"])
 log["seq1_len"] = log["sequence_data"].apply(lambda x: x["seq1"]["len"])
 log["seq1_stat"] = log["sequence_data"].apply(lambda x: x["seq1"].get("seqstat", 0))
+log["agg_propensity"] = log["sequence_data"].apply(lambda x: x["seq1"].get("agg_propensity", 0))
 
 if simparam["seq2"]:
     log["seq2"] = log["sequence_data"].apply(lambda x: x["seq2"]["sequence"])
@@ -400,7 +404,7 @@ bestlog = log.groupby('gndx').head(1)
 bestlog_cols = ["gndx", "id", "prev_id", "mutation", "beta", 
                     "plddt", "ptm", "iplddt", "iptm", "cd", "lcd", 
                     "n_atoms", "n_clashes", "clashscore", "seqid", "tmscore", "score", 
-                    "seq1", "seq1_ss", "seq1_len", "seq1_stat"]
+                    "seq1", "seq1_ss", "seq1_len", "seq1_stat", "agg_propensity"]
 if simparam["seq2"]:
     bestlog_cols += ["seq2", "seq2_ss", "seq2_len", "seq2_stat"]
 bestlog_cols += ["structure"]

@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 import sys
 import json
@@ -9,12 +10,19 @@ import pandas as pd
 import typing as T
 import base64
 import zstandard as zstd
+
+import subprocess
+import tempfile
+
 from pathlib import Path
 from datetime import datetime
 
 from pdbutils import parsepdb
 from seqtools import Seqstat, fasta2dict
 from _version import get_version
+
+from canya_modeling import (get_canya, get_embedded_seqs, get_predictions)
+
 
 # Resolve repo root from this file's location so paths work from any directory
 DATA_DIR = Path(__file__).resolve().parent / "data/"
@@ -414,7 +422,7 @@ class ScoringFunction:
             'PROTEIN_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0},
             'NUCLEIC_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0},
             'NUCLEIC_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0},
-            'PROTEIN_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
+            'PROTEIN_LIGAND_EVOLUTION':             {"ptm": 0.5, "plddt": 0.2, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.3, "lcd": 0.0}, #replaced with protein_evolution weights
             'NUCLEIC_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25},
             'PROTEIN_PROTEIN_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
             'PROTEIN_PROTEIN_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
@@ -456,4 +464,24 @@ def print_genlog(genlog:pd.DataFrame, args) -> None:
     
     genlog['sequence_data'] = genlog['sequence_data'].apply(extract_sequence)
     print(genlog.to_string(index=False, header=True))
+
+@lru_cache(maxsize=1)
+def _canya_model():
+    return get_canya("data/models/model_weights1.h5")
+
+#test
+def agg_propensity(sequence: str) -> float:
+    "calculate aggregration propensity a sequence using CANYA"
+
+    windowsize=20
+
+    if len(sequence) > windowsize:
+        windows = [sequence[i:(i+windowsize)] for i in range(len(sequence)-windowsize+1)]
+    else:
+        windows = [sequence]
+
+    embedded = get_embedded_seqs(windows)
+    predictions = get_predictions(model = _canya_model(), embeddedseqs = embedded)
+
+    return float(np.median(predictions))
 

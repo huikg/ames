@@ -39,6 +39,7 @@ from amestools import (generate_loghead,
                        create_init_gen,
                        print_genlog,
                        ScoringFunction,
+                       agg_propensity,
                        DATA_DIR
                       )
 
@@ -264,11 +265,12 @@ def extract_results(gen_i: int,
     else:
         rfam_score_dict = {}
         rfam_hit_dict = {}
-        
+
+
         
     batch_rows = [] 
 
-    for meta_id, seq_data, pdb_txt, ptm, plddt, iptm in \
+    for (meta_id, seq_data, pdb_txt, ptm, plddt, iptm) in \
         zip(headers, sequence_data_batch, structures, ptms, plddts, iptms):
         uid_data = meta_id.split('_')
 
@@ -279,14 +281,19 @@ def extract_results(gen_i: int,
         # calculate seq_stat 
         if args.seq1_type == 'protein':
             seq_data["seq1"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
+            seq_data["seq1"]["agg_propensity"] = agg_propensity(seq_data["seq1"]["sequence"])
         else:
             seq_data["seq1"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
+            seq_data["seq1"]["agg_propensity"] = 0 # no aggregation propensity for RNA
+
 
         if args.seq2:
             if args.seq2_type == 'protein':
                 seq_data["seq2"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
+                seq_data["seq2"]["agg_propensity"] = agg_propensity(seq_data["seq2"]["sequence"])
             else:
                 seq_data["seq2"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
+                seq_data["seq2"]["agg_propensity"] = 0 # no aggregation propensity for RNA
 
         # calculate length constraints
         seq1_min_constr = sigmoid(seq_data["seq1"]["len"], args.seq1_min_len, 0.5)

@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--seq1_type', type=str, help='1st seq type [proten, rna, dna] ')
     parser.add_argument('--seq1_len', type=int, help='if random(s) selected provide random sequence length, ignore if real sequence is provided')
     parser.add_argument('--seq1_evol', help='does seq1 evolve [True/False]', action='store_true')
-    parser.add_argument('--seq1_rate', type=float, help='probability of 1st sequence to mutate [0,1]')
+    parser.add_argument('--seq1_rate', type=float, help='probability of 1st sequence to mutate [0,1], 0 - does not change, 1  sequences always mutate')
     #seq2 setup
     parser.add_argument('--iseq2', type=str, help='2nd seq info to initiate simulation "rna:AGUCGAUCA:25:static"')
     parser.add_argument('--seq2_init', type=str, help='2nd seqence "sequence" - actual sequence, "random" - the same random sequence for entire populations, \
@@ -155,7 +155,7 @@ def parse_args() -> argparse.Namespace:
             args.seq2_evol = False
             args.seq1_rate = 1.0
            
-    assert args.seq1_evol == True or args.seq2_evol == True, "either seq1_evol or seq2_evol must be True"
+    assert args.seq1_rate > 0 or args.seq2_rate > 0, "either seq1_evol or seq2_evol must be True"
 
     if args.ligand != None:
         args.ligand = args.ligand.split(",")

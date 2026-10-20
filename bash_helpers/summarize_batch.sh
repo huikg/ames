@@ -139,7 +139,8 @@ def summary_plot_with_violin(basedir, outdir, suffix='_lineage.tsv', param='seq1
 
 params = ['plddt', 'ptm', 'iplddt', 'iptm', 'score', 'evolrate',
           'seq1_stat', 'seq2_stat', 'n_atoms', 'cd', 'lcd',
-          'seq1_len', 'seq2_len', 'clashscore', 'num_clashes', 'rfam_score', 'beta']
+          'seq1_len', 'seq2_len', 'clashscore', 'num_clashes', 'rfam_score',
+          'seqid', 'tmscore', 'beta']
 
 for label, outdir, suffix in [("lineage", "$batch_summary_lineage", "_lineage.tsv"),
                               #("bestlog", "$batch_summary_bestlog", "_bestlog.tsv")

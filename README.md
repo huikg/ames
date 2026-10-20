@@ -4,15 +4,10 @@
 
 ## Installation
 
-**Install ames with ESMfold2** (needs python >= 3.10 and a C++17 compiler)
+**Install ames with ESMfold2** (needs python >= 3.12 and a C++17 compiler)
+
 ```
 pip install "ames[esmfold2] @ git+https://github.com/sahakyanhk/ames"
-```
-
-**Clone repo for local development**
-```
-git clone https://github.com/sahakyanhk/ames.git && cd ames
-pip install -e .
 ```
 
 ***Install in an environment***
@@ -23,7 +18,20 @@ pip install git+https://github.com/sahakyanhk/ames.git
 pip install esm
 ```
 
-Install [AlphaFold3](https://github.com/google-deepmind/alphafold3/blob/main/docs/installation.md), [OpenFold3](https://github.com/aqlaboratory/openfold-3?tab=readme-ov-file#quick-start-for-inference), or ESMFold via [Transformers](https://github.com/huggingface/transformers?tab=readme-ov-file#installation) as an alternative engine if needed.
+**Clone repo for local development**
+```
+git clone https://github.com/sahakyanhk/ames.git && cd ames
+pip install -e .
+```
+
+Install [AlphaFold3](https://github.com/google-deepmind/alphafold3/blob/main/docs/installation.md) or [OpenFold3](https://github.com/aqlaboratory/openfold-3?tab=readme-ov-file#quick-start-for-inference) as an alternative engine if needed.
+
+**System requirements** \
+This code was tested on RHEL 8.10 with A100 and AMD EPYC 7543P.\
+An A100 or newer GPU is recommended for simulations with ESMfold2 or AlphaFold3/OpenFold3. \
+For ESMfold weights, ~27 GB of free space is required (will be downloaded on first run). 
+
+A simulation for a small protein (70 aa) with `-ps 100 -ng 1000` takes ~1 day on an L40 GPU with ESMFold2.
 
 
 ## Quick Start
@@ -50,7 +58,7 @@ Use [AMESViewer](https://github.com/sahakyanhk/ames_viewer) to visualize and ana
 **Single protein fold evolution simulation with ESMFold as in [PFES](https://www.pnas.org/doi/10.1073/pnas.2509015122) paper** 
 ```
 ames --iseq1 'protein:randoms:65:evolv' --seq1_rate 1 \
-     -pm1 pmo -ps 100 -ng 1000 \
+     -ps 100 -ng 1000 \
      --engine esmfold \
      -o outputs/esmfold_test
 
@@ -65,7 +73,7 @@ visualames -l outputs/esmfold_test/progress.log
 for i in {01..09}; do bash_helpers/run_ames.sbatch outputs/batch1/run$i; done
 ```
 
-When the batch jobs are done, use `bash_helpers/summarize_batch.sh` to summarize the results. Install [rnpclust](https://github.com/sahakyanhk/rnpclust) for clustering RNA-protein complexes.
+When the batch jobs are done, use `bash_helpers/summarize_batch.sh` to summarize the results. Install [avaclust](https://github.com/sahakyanhk/rnpclust) for clustering RNA-protein complexes.
 
 ```
 bash_helpers/summarize_batch.sh outputs/batch1 
@@ -109,8 +117,7 @@ use the same settings for seq2 with `--iseq2`, `--seq2_init`, `--seq2_type`, `--
 `-m2`, `--seq2_mutations` 2st sequence mutations [npm, pmo, rso, rnd] \
 
 **ligand setup** \
-`--ligand` ligand(s) provided in ccd or smiles format separated with commas e.g., "--ligand ATP,MG" \
-
+`--ligand` ligand(s) provided in ccd format separated with commas e.g., "--ligand ATP,MG" \
 
 **outputs control** \
 `-o`,`--outpath` output dir name where log and checkpoint files are saved, "ames_output/output" by default \

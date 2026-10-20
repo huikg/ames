@@ -10,7 +10,7 @@ description = "atomistic molecular evolution simulator"
 readme = "README.md"
 
 dependencies = [
-    "numpy>=2.0",
+    "numpy>=2.0,<2.2",
     "pandas>=2.2.2",
     "pybind11==3.0.1",   # also a build requirement; kept here so
                          # `pip install --no-build-isolation -e .` finds it
@@ -18,6 +18,9 @@ dependencies = [
     "zstandard",         # amestools: CIF compression in the run log
     "matplotlib",        # visualames
     "tqdm",              # visualames
+    "tensorflow==2.19.1",# canya
+    "tf-keras==2.19.0",  # canya
+    "h5py>=3.11.0"       # canya
 ]
 
 [project.optional-dependencies]
@@ -38,4 +41,4 @@ zip-safe = false
 where = ["src"]
 
 [tool.setuptools.package-data]
-ames = ["data/*.json", "bin/psique", "pdb_contacts.cpp"]
+ames = ["data/*.json", "bin/psique", "pdb_contacts.cpp","data/models/*.h5"]

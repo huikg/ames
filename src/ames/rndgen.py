@@ -30,7 +30,7 @@ import argparse
 from pathlib import Path
 
 ALPHABETS = {
-    "protein": "ACDEFGHIKLMNPQRSTVWY",
+    "protein": "ACDEFGHIKLMNPQRSTVWY", 
     "rna": "ACGU",
     "dna": "ACGT",
 }
@@ -46,7 +46,7 @@ def guess_type(sequence: str) -> str:
     letters = set(sequence.upper())
     if letters and letters <= _NUCLEIC_ALPHABET:
         return "rna" if "U" in letters else "dna"
-    return "protein"
+    return "protein" 
 
 
 def parse_length(spec: str, flag: str) -> tuple:
@@ -64,9 +64,10 @@ def parse_length(spec: str, flag: str) -> tuple:
     return low, high
 
 
-def random_sequence(seq_type: str, length_range: tuple) -> str:
+def random_sequence(seq_type: str, length_range: tuple, alphabet: str) -> str:
     length = random.randint(*length_range)
-    return "".join(random.choices(ALPHABETS[seq_type], k=length))
+    alphabet = alphabet or ALPHABETS[seq_type]
+    return "".join(random.choices(alphabet, k=length))
 
 
 def split_sequences(values: list) -> list:
@@ -77,7 +78,7 @@ def split_sequences(values: list) -> list:
 class ChainSpec:
     """One side of a query: either a random generator or a fixed sequence list."""
 
-    def __init__(self, values, seq_type, length, chain_id, flag):
+    def __init__(self, values, seq_type, length, chain_id, flag, aa_alphabet=None):
         self.id = chain_id
         self.is_random = len(values) == 1 and values[0].lower() == RANDOM_KEYWORD
 
@@ -86,6 +87,17 @@ class ChainSpec:
                 raise ValueError(f"{flag} is random: {flag}_len is required")
             self.type = seq_type or "protein"
             self.length_range = parse_length(length, f"{flag}_len")
+
+            #new section -> pass in AA alphabet if user specifies it
+            if self.type == "protein" and aa_alphabet is not None:
+                alphabet = aa_alphabet.upper()
+                invalid = set(alphabet) - set(ALPHABETS["protein"])
+                if not alphabet or invalid:
+                    raise ValueError("Custom alphabet must use standard amino acid letters")
+                self.alphabet = alphabet
+            else:
+                self.alphabet = ALPHABETS[self.type]
+
             self.sequences = [None]  # a single "slot", filled per query
         else:
             if length is not None:
@@ -109,7 +121,7 @@ class ChainSpec:
         return len(self.sequences)
 
     def chain(self, slot: int) -> dict:
-        seq = random_sequence(self.type, self.length_range) if self.is_random \
+        seq = random_sequence(self.type, self.length_range, self.alphabet) if self.is_random \
             else self.sequences[slot]
         return {"type": self.type, "sequence": seq, "id": self.id}
 
@@ -202,6 +214,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prefix", default="input",
                         help="query name prefix (complex1, complex2, ...)")
     parser.add_argument("--seed", type=int, default=None, help="random seed for reproducible output")
+    parser.add_argument("--AA", "--AA_alphabet", dest = "aa_alphabet",default="ACDEFGHIKLMNPQRSTVWY", help="custom amino acid alphabet for random sequences")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -219,9 +232,9 @@ def main() -> None:
         random.seed(args.seed)
 
     try:
-        specs = [ChainSpec(args.seq1, args.seq1_type, args.seq1_len, "A", "--seq1")]
+        specs = [ChainSpec(args.seq1, args.seq1_type, args.seq1_len, "A", "--seq1", args.aa_alphabet)]
         if args.seq2:
-            specs.append(ChainSpec(args.seq2, args.seq2_type, args.seq2_len, "B", "--seq2"))
+            specs.append(ChainSpec(args.seq2, args.seq2_type, args.seq2_len, "B", "--seq2", args.aa_alphabet))
         elif args.seq2_len or args.seq2_type:
             raise ValueError("--seq2_len/--seq2_type given without --seq2")
     except ValueError as err:

@@ -302,7 +302,7 @@ def create_model(
     return model
 
 #updated to use importlib.resources
-def get_canya(modweights="models/model_weights1.h5"):
+def get_canya(modweights="data/models/model_weights1.h5"):
     weights_path = Path(__file__).resolve().parent / modweights
     canyamodel=create_model()
     canyamodel.load_weights(str(weights_path))

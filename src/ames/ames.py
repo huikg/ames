@@ -287,7 +287,7 @@ def extract_results(gen_i: int,
         # calculate seq_stat 
         if args.seq1_type == 'protein':
             seq_data["seq1"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
-            seq_data["seq1"]["agg_propensity"] = agg_propensity(seq_data["seq1"]["sequence"])
+            seq_data["seq1"]["agg_propensity"] = 1 - agg_propensity(seq_data["seq1"]["sequence"])
         else:
             seq_data["seq1"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
             seq_data["seq1"]["agg_propensity"] = 0 # no aggregation propensity for RNA
@@ -296,7 +296,7 @@ def extract_results(gen_i: int,
         if args.seq2:
             if args.seq2_type == 'protein':
                 seq_data["seq2"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
-                seq_data["seq2"]["agg_propensity"] = agg_propensity(seq_data["seq2"]["sequence"])
+                seq_data["seq2"]["agg_propensity"] = 1 - agg_propensity(seq_data["seq2"]["sequence"])
             else:
                 seq_data["seq2"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
                 seq_data["seq2"]["agg_propensity"] = 0 # no aggregation propensity for RNA
@@ -467,6 +467,7 @@ def extract_results(gen_i: int,
                               iplddt, 
                               contact_density, 
                               ligand_contact_density,
+                              0.0,
                               penalty
                               ) + (0.5 * rfam_score)
  
@@ -499,6 +500,20 @@ def extract_results(gen_i: int,
         ############################################################################
         #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<<
         ############################################################################
+
+        #<<<<<<<<<<<<<<<<<<<<<<<<<< Aggregation propensity Scoring test <<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        if args.agg_propensity:
+            agg_prop = seq_data["seq1"]["agg_propensity"]
+            score = scoring.score(ptm, 
+                              plddt, 
+                              iptm, 
+                              iplddt, 
+                              contact_density, 
+                              ligand_contact_density,
+                              agg_prop,
+                              penalty
+                              ) + (0.5 * rfam_score)
 
         row_data = {
             'gndx': gen_i,

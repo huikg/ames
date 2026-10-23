@@ -422,7 +422,7 @@ class ScoringFunction:
             'PROTEIN_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0, "agg_propensity": 0.0},
             'NUCLEIC_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0, "agg_propensity": 0.0},
             'NUCLEIC_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0, "agg_propensity": 0.0},
-            'PROTEIN_LIGAND_EVOLUTION':             {"ptm": 0.5, "plddt": 0.2, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.3, "lcd": 0.0, "agg_propensity": 0.0}, #replaced with protein_evolution weights
+            'PROTEIN_LIGAND_EVOLUTION':              {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
             'NUCLEIC_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25, "agg_propensity": 0.0}, 
             'PROTEIN_PROTEIN_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
             'PROTEIN_PROTEIN_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},

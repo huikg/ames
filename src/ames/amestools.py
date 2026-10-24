@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 import sys
 import json
@@ -9,12 +10,19 @@ import pandas as pd
 import typing as T
 import base64
 import zstandard as zstd
+
+import subprocess
+import tempfile
+
 from pathlib import Path
 from datetime import datetime
 
 from pdbutils import parsepdb
 from seqtools import Seqstat, fasta2dict
 from _version import get_version
+
+from canya import Canya
+
 
 # Resolve repo root from this file's location so paths work from any directory
 DATA_DIR = Path(__file__).resolve().parent / "data/"
@@ -406,34 +414,35 @@ class ScoringFunction:
                 self.scoring_weights = json.load(f)
         else:
             self.scoring_weights = {
-            'PROTEIN_EVOLUTION':                    {"ptm": 0.5, "plddt": 0.2, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.3, "lcd": 0.0},
-            'NUCLEIC_EVOLUTION':                    {"ptm": 0.5, "plddt": 0.5, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.0,  "lcd": 0.0},
-            'PROTEIN_PROTEIN_EVOLUTION':            {"ptm": 0.2, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.25, "cd": 0.2, "lcd": 0.0},
-            'PROTEIN_PROTEIN_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.25, "cd": 0.2, "lcd": 0.0},
-            'PROTEIN_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0},
-            'PROTEIN_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0},
-            'NUCLEIC_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0},
-            'NUCLEIC_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0},
-            'PROTEIN_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
-            'NUCLEIC_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25},
-            'PROTEIN_PROTEIN_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
-            'PROTEIN_PROTEIN_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
-            'PROTEIN_NUCLEIC_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
-            'PROTEIN_NUCLEIC_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2},
-            'NUCLEIC_NUCLEIC_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25},
-            'NUCLEIC_NUCLEIC_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25}
+            'PROTEIN_EVOLUTION':                    {"ptm": 0.4, "plddt": 0.2, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.3, "lcd": 0.0, "agg_propensity": 0.1}, #modified for score test
+            'NUCLEIC_EVOLUTION':                    {"ptm": 0.5, "plddt": 0.5, "iptm": 0.0,  "iplddt": 0.0,  "cd": 0.0,  "lcd": 0.0, "agg_propensity": 0.0},
+            'PROTEIN_PROTEIN_EVOLUTION':            {"ptm": 0.2, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.25, "cd": 0.2, "lcd": 0.0, "agg_propensity": 0.0},
+            'PROTEIN_PROTEIN_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.25, "cd": 0.2, "lcd": 0.0, "agg_propensity": 0.0},
+            'PROTEIN_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0, "agg_propensity": 0.0},
+            'PROTEIN_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.1, "lcd": 0.0, "agg_propensity": 0.0},
+            'NUCLEIC_NUCLEIC_EVOLUTION':            {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0, "agg_propensity": 0.0},
+            'NUCLEIC_NUCLEIC_COEVOLUTION':          {"ptm": 0.2, "plddt": 0.2, "iptm": 0.3, "iplddt": 0.3, "cd": 0.0, "lcd": 0.0, "agg_propensity": 0.0},
+            'PROTEIN_LIGAND_EVOLUTION':              {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
+            'NUCLEIC_LIGAND_EVOLUTION':             {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25, "agg_propensity": 0.0}, 
+            'PROTEIN_PROTEIN_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
+            'PROTEIN_PROTEIN_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
+            'PROTEIN_NUCLEIC_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
+            'PROTEIN_NUCLEIC_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.2, "iplddt": 0.2, "cd": 0.2, "lcd": 0.2, "agg_propensity": 0.0},
+            'NUCLEIC_NUCLEIC_LIGAND_EVOLUTION':     {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25, "agg_propensity": 0.0},
+            'NUCLEIC_NUCLEIC_LIGAND_COEVOLUTION':   {"ptm": 0.1, "plddt": 0.1, "iptm": 0.25, "iplddt": 0.3, "cd": 0.0, "lcd": 0.25, "agg_propensity": 0.0}
             }       
 
         self.weigths = self.scoring_weights[evolution_type]
 
-    def score(self, ptm, plddt, iptm, iplddt, contact_density, ligand_contact_density,  penalty):
+    def score(self, ptm, plddt, iptm, iplddt, contact_density, ligand_contact_density, agg_propensity, penalty):
         
         s = (self.weigths["iptm"]*iptm + 
              self.weigths["iplddt"]*iplddt + 
              self.weigths["ptm"]*ptm + 
-             self.weigths["plddt"]*plddt + 
+             self.weigths["plddt"]*plddt +
              self.weigths["cd"]*contact_density + 
-             self.weigths["lcd"]*ligand_contact_density) * penalty
+             self.weigths["lcd"]*ligand_contact_density +
+             self.weigths["agg_propensity"]*agg_propensity) * penalty
         
         return round(s, 3)
 
@@ -456,4 +465,13 @@ def print_genlog(genlog:pd.DataFrame, args) -> None:
     
     genlog['sequence_data'] = genlog['sequence_data'].apply(extract_sequence)
     print(genlog.to_string(index=False, header=True))
+
+@lru_cache(maxsize=1)
+def _canya_model():
+    return Canya(weights=DATA_DIR / "models" / "model_weights1.npz")
+
+#test
+def agg_propensity(sequence: str) -> float:
+    "calculate aggregration propensity a sequence using CANYA"
+    return _canya_model().score([sequence])[0]
 

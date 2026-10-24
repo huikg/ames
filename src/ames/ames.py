@@ -39,6 +39,7 @@ from amestools import (generate_loghead,
                        create_init_gen,
                        print_genlog,
                        ScoringFunction,
+                       agg_propensity,
                        DATA_DIR
                       )
 
@@ -270,11 +271,12 @@ def extract_results(gen_i: int,
     else:
         rfam_score_dict = {}
         rfam_hit_dict = {}
-        
+
+
         
     batch_rows = [] 
 
-    for meta_id, seq_data, pdb_txt, ptm, plddt, iptm in \
+    for (meta_id, seq_data, pdb_txt, ptm, plddt, iptm) in \
         zip(headers, sequence_data_batch, structures, ptms, plddts, iptms):
         uid_data = meta_id.split('_')
 
@@ -285,14 +287,19 @@ def extract_results(gen_i: int,
         # calculate seq_stat 
         if args.seq1_type == 'protein':
             seq_data["seq1"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
+            seq_data["seq1"]["agg_propensity"] = 1 - agg_propensity(seq_data["seq1"]["sequence"])
         else:
             seq_data["seq1"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq1"]["sequence"])
+            seq_data["seq1"]["agg_propensity"] = 0 # no aggregation propensity for RNA
+
 
         if args.seq2:
             if args.seq2_type == 'protein':
                 seq_data["seq2"]["seqstat"] = protein_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
+                seq_data["seq2"]["agg_propensity"] = 1 - agg_propensity(seq_data["seq2"]["sequence"])
             else:
                 seq_data["seq2"]["seqstat"] = rna_seqstat.n_gram_prior(seq_data["seq2"]["sequence"])
+                seq_data["seq2"]["agg_propensity"] = 0 # no aggregation propensity for RNA
 
         # calculate length constraints
         seq1_min_constr = sigmoid(seq_data["seq1"]["len"], args.seq1_min_len, 0.5)
@@ -460,6 +467,7 @@ def extract_results(gen_i: int,
                               iplddt, 
                               contact_density, 
                               ligand_contact_density,
+                              0.0,
                               penalty
                               ) + (0.5 * rfam_score)
  
@@ -467,31 +475,52 @@ def extract_results(gen_i: int,
         #>>>>>>>>>>>>>>>>>>>>>>>>>> TEMPLATE SCORING TEST >>>>>>>>>>>>>>>>>>>>>>>>>> 
         ############################################################################
         if args.structure_template1 and args.sequence_template:
+
+            SEQID_CUTOFF = 0.5
+
             try:
                 tmscore = tmalign(pdb_txt, args.structure_template1).tmscore
             except Exception as e:
                 tmscore = 1
                 print(f"tmalign failed: {e}")
                 print(args.structure_template1)
+
+            tm_score = 1 - (0.35 if tmscore <= 0.35 else tmscore) 
+
             sequence_identity = seqid(seq_data["seq1"]["sequence"], args.sequence_template)
 
-            # tmscore = 0.35 if tmscore <= 0.35 else tmscore 
-            # sequence_identity = sequence_identity if sequence_identity >= 0.45 else sequence_identity/2
-            # ptm = 0 if ptm <= 0.35 else ptm
+            if sequence_identity >= SEQID_CUTOFF:
+                seq_id = sequence_identity 
+            else:
+                seq_id = 0
+                penalty = penalty * sequence_identity**2
 
-            score = 0.5*plddt + ptm \
-                + 2*(sequence_identity if sequence_identity >= 0.45 else sequence_identity/2) \
-                + (1 - (0.35 if tmscore <= 0.35 else tmscore ))
+            score = 0.3*ptm + 0.3*tm_score + 0.4*seq_id
 
-            score = round(score, 3)
+            score = round(score * penalty, 3)
 
         else: 
             tmscore = 0.0
             sequence_identity = 0.0
          
         ############################################################################
-        #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<<
+        #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<
         ############################################################################
+
+
+        #<<<<<<<<<<<<<<<<<<<<<<<<<< Aggregation propensity Scoring test <<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        if args.agg_propensity:
+            agg_prop = seq_data["seq1"]["agg_propensity"]
+            score = scoring.score(ptm, 
+                              plddt, 
+                              iptm, 
+                              iplddt, 
+                              contact_density, 
+                              ligand_contact_density,
+                              agg_prop,
+                              penalty
+                              ) + (0.5 * rfam_score)
 
         row_data = {
             'gndx': gen_i,

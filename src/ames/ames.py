@@ -475,31 +475,38 @@ def extract_results(gen_i: int,
         #>>>>>>>>>>>>>>>>>>>>>>>>>> TEMPLATE SCORING TEST >>>>>>>>>>>>>>>>>>>>>>>>>> 
         ############################################################################
         if args.structure_template1 and args.sequence_template:
+
+            SEQID_CUTOFF = 0.5
+
             try:
                 tmscore = tmalign(pdb_txt, args.structure_template1).tmscore
             except Exception as e:
                 tmscore = 1
                 print(f"tmalign failed: {e}")
                 print(args.structure_template1)
+
+            tm_score = 1 - (0.35 if tmscore <= 0.35 else tmscore) 
+
             sequence_identity = seqid(seq_data["seq1"]["sequence"], args.sequence_template)
 
-            # tmscore = 0.35 if tmscore <= 0.35 else tmscore 
-            # sequence_identity = sequence_identity if sequence_identity >= 0.45 else sequence_identity/2
-            # ptm = 0 if ptm <= 0.35 else ptm
+            if sequence_identity >= SEQID_CUTOFF:
+                seq_id = sequence_identity 
+            else:
+                seq_id = 0
+                penalty = penalty * sequence_identity**2
 
-            score = 0.5*plddt + ptm \
-                + 2*(sequence_identity if sequence_identity >= 0.45 else sequence_identity/2) \
-                + (1 - (0.35 if tmscore <= 0.35 else tmscore ))
+            score = 0.3*ptm + 0.3*tm_score + 0.4*seq_id
 
-            score = round(score, 3)
+            score = round(score * penalty, 3)
 
         else: 
             tmscore = 0.0
             sequence_identity = 0.0
          
         ############################################################################
-        #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<<
+        #<<<<<<<<<<<<<<<<<<<<<<<<<< TEMPLATE SCORING TEST <<<<<<<<<<<<<<<<<<<<<<<<<<
         ############################################################################
+
 
         #<<<<<<<<<<<<<<<<<<<<<<<<<< Aggregation propensity Scoring test <<<<<<<<<<<<<<<<<<<<<<<<<<<
 

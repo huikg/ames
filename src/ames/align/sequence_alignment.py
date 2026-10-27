@@ -3,6 +3,8 @@ from Bio import Align
 aligner = Align.PairwiseAligner()
 blosum62 = Align.substitution_matrices.load("BLOSUM62")
 aligner.substitution_matrix = blosum62
+aligner.open_gap_score = -11 
+aligner.extend_gap_score = -1
 
 def sequence_identity(query, target):
     alignment = aligner.align(query, target)

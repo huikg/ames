@@ -387,7 +387,7 @@ log["seq1"] = log["sequence_data"].apply(lambda x: x["seq1"]["sequence"])
 log["seq1_ss"] = log["sequence_data"].apply(lambda x: x["seq1"]["ss"])
 log["seq1_len"] = log["sequence_data"].apply(lambda x: x["seq1"]["len"])
 log["seq1_stat"] = log["sequence_data"].apply(lambda x: x["seq1"].get("seqstat", 0))
-log["agg_propensity"] = log["sequence_data"].apply(lambda x: x["seq1"].get("agg_propensity", 0))
+log["agg_propensity"] = log["sequence_data"].apply(lambda x: x["seq1"].get("aggregation_propensity", 0))
 log["entropy"] = log["sequence_data"].apply(lambda x: x["seq1"].get("entropy", 0))
 
 if simparam["seq2"]:

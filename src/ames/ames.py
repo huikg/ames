@@ -454,9 +454,10 @@ def extract_results(gen_i: int,
                     * seq2_maxalpha_penalty * seq2_maxstrand_penalty, 3)
         
         if args.agg_propensity:
-            penalty = round(penalty \
-                * seq_data["seq1"]["aggregation_propensity"] \
-                * seq_data["seq1"]["aggregation_propensity"], 3)
+            agg_penalty = seq_data["seq1"]["aggregation_propensity"]
+            if args.seq2:
+                agg_penalty *= seq_data["seq2"]["aggregation_propensity"]
+            penalty = round(penalty * agg_penalty, 3)
 
         rfam_score = rfam_score_dict.get(meta_id, 0)
         rfam_hit = rfam_hit_dict.get(meta_id, "-")
